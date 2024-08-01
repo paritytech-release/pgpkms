@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pgpkms
-Version: 1.0.7
+Version: 1.0.8
 Summary: PGP signatures with AWS KMS keys
 Home-page: https://github.com/juitnow/pgpkms
 Author: Juit Developers

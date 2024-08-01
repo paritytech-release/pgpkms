@@ -20,7 +20,6 @@ def __help():
       message    Wrap a plaintext in a PGP message and sign it.
 
     Options:
-      -k, --key=<id>         The ID, ARN, or alias of the key to use.
       -o, --output=<file>    Use the specified file as output instead of stdout.
       -i, --input <file>     Use the specified file as input instead of stdin.
       -b,--binary            Do not armour the output (igored for "message").
@@ -102,15 +101,15 @@ if __name__ == '__main__':
   elif command == 'help':
     __help()
 
-  key = os.environ.get('PGP_KMS_KEY')
+  kms_key = os.environ.get('PGP_KMS_KEY')
   hash = os.environ.get('PGP_KMS_HASH', 'sha256')
   input = None
   output = None
   armoured = True
 
   try:
-    (options, rest) = getopt(sys.argv[2:], 'k:o:i:b', [
-      'key=', 'output=', 'input=', 'binary',
+    (options, rest) = getopt(sys.argv[2:], 'o:i:b', [
+      'output=', 'input=', 'binary',
       'sha256', 'sha384', 'sha512',
     ])
 
@@ -130,7 +129,7 @@ if __name__ == '__main__':
   except GetoptError as error:
     sys.exit('Error: %s' % (error))
 
-  if key == None:
+  if kms_key == None:
     sys.exit('Error: no key ID specified')
 
   if not(hash in [ 'sha256', 'sha384', 'sha512' ]):
@@ -141,7 +140,7 @@ if __name__ == '__main__':
     'sign': __sign,
     'message': __message,
   }[command](
-    key = key,
+    key = kms_key,
     hash = hash,
     input = input,
     output = output,

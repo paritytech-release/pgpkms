@@ -148,3 +148,11 @@ signature to the output specified.
 
 If output was `None`, this method returns a string containing the GnuPG /
 OpenPGP formatted message and signature.
+
+
+Bugfixes and version changes
+---------------------
+Compared with the original **v1.0.7 by Juit Developers:**
+
+- 1.0.8: makes the `PGP_KMS_KEY` environmental variable really working, and removes the hardcoded key name from the code. Removes the `-k` option from the list of options as not really used.
+
