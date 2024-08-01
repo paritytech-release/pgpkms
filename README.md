@@ -48,13 +48,6 @@ _export_ the public key, or _sign_ a file:
 
 #### Options:
 
-* `-k <id>` or `--key <id>`
-  The ID, ARN or alias of the key to use. This can be one of:
-  * Key ID: e.g. `1234abcd-12ab-34cd-56ef-1234567890ab`
-  * Key ARN: e.g. `arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab`
-  * Alias name: e.g. `alias/ExampleAlias`
-  * Alias ARN: `arn:aws:kms:us-east-2:111122223333:alias/ExampleAlias`
-
 * `-o <file>` or `--output <file>`
   Use the specified file as output instead of stdout.
 
