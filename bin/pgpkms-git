@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# a very basic emulation around 
+# https://github.com/git/git/blob/master/gpg-interface.c 
+# -> `static int sign_buffer_gpg` func
+
+GPG_FINGERPRINT=$(pgpkms export | gpg --show-key --with-colons | grep fpr | cut -d ':' -f 10)
+signature=$(pgpkms sign) &&
+echo "[GNUPG:] SIG_CREATED $GPG_FINGERPRINT" 1>&2 &&
+echo $signature 1>&2

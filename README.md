@@ -10,8 +10,6 @@ for now) to generate GnuPG / OpenPGP compatible signatures (v4).
 * [Copyright Notice](NOTICE.md)
 * [License](LICENSE.md)
 
-
-
 Preparing keys in KMS
 ---------------------
 
@@ -28,8 +26,6 @@ we can use a couple of _tags_ on the AWS key itself:
 * `PGPName`: the `Name` part of the _User ID_.
 * `PGPEmail`: the `email@domain` part of the _User ID_.
 
-
-
 Command Line Usage
 ------------------
 
@@ -39,6 +35,8 @@ _export_ the public key, or _sign_ a file:
 #### Usage:
 
 `python3 -m pgpkms <command> [options]`
+
+or just `pgpkms <command> [options]` if the package is installed in a python virtualenv and env is activated.
 
 #### Commands:
 
@@ -65,6 +63,12 @@ _export_ the public key, or _sign_ a file:
 * `PGP_KMS_KEY`: The default ID, ARN or alias of the key to use.
 * `PGP_KMS_HASH`: The hashing algorithm to use (default tp "sha256").
 
+In addition, AWS variables for the `boto` AWS Python module:
+
+* `AWS_ACCESS_KEY_ID`: AWS Service account key id
+* `AWS_SECRET_ACCESS_KEY`: AWS Service account secret key
+* `AWS_DEFAULT_REGION`: AWS Region of the key
+
 #### Examples
 
 Export the (unarmoured) public key into the "trusted.gpg" file.
@@ -79,7 +83,33 @@ Sign the file "myfile.bin" and emit the armoured signature to stdout.
 $ python3 -m pgpkms sign --input myfile.bin
 ```
 
+#### Signing GIT commits
 
+First, create and activate a Python virtualenv by
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Install the whole package by `pip3 install .` from the root of the repo, it will make `pgpkms-git` and `pgpkms` scripts quickly accessible.
+
+Then export the public key to the local gpg: `pgpkms export  | gpg --import`
+
+And also obtain the fingerprint of the key: `pgpkms export | gpg --show-key`
+
+Then configure the local git:
+
+```bash
+git config --local commit.gpgsign true
+git config --local gpg.program pgpkms-git
+git config --local user.name <What is in the PGPName tag above>
+git config --local user.email <What was in the PGPEmail tag above>
+git config --local user.signingKey <GPG Key fingerprint>
+```
+
+A normal `git commit` will produce a signed commit. 
+However, reading git signatures like `git log --show-signature` won't be supported, it is needed to change `gpg.program` back to `gpg`, to verify the signatures, because this signing workflow is only designed for securely signing in the pipelines.
 
 Library Usage
 -------------
@@ -142,10 +172,11 @@ signature to the output specified.
 If output was `None`, this method returns a string containing the GnuPG /
 OpenPGP formatted message and signature.
 
+### Bugfixes and version changes:
 
-Bugfixes and version changes
 ---------------------
 Compared with the original **v1.0.7 by Juit Developers:**
 
-- 1.0.8: makes the `PGP_KMS_KEY` environmental variable really working, and removes the hardcoded key name from the code. Removes the `-k` option from the list of options as not really used.
+- 1.1.0: adds GPG commit signing emulation
 
+- 1.0.8: makes the `PGP_KMS_KEY` environmental variable really working, and removes the hardcoded key name from the code. Removes the `-k` option from the list of options as not really used.
