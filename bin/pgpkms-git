@@ -1,10 +1,31 @@
 #!/bin/bash
-
 # a very basic emulation around 
 # https://github.com/git/git/blob/master/gpg-interface.c 
 # -> `static int sign_buffer_gpg` func
+case $PGP_KMS_HASH in
+    sha256)
+        HASH_ALG="8"
+    ;;
+    sha384)
+        HASH_ALG="9"
+    ;;
+    sha512)
+        HASH_ALG="10"
+    ;;
+    *)
+        HASH_ALG="8"
+    ;;
+esac
 
-GPG_FINGERPRINT=$(pgpkms export | gpg --show-key --with-colons | grep fpr | cut -d ':' -f 10)
-signature=$(pgpkms sign) &&
-echo "[GNUPG:] SIG_CREATED $GPG_FINGERPRINT" 1>&2 &&
-echo $signature 1>&2
+RSA_ALG="1" #RSA_GENERAL for GPG
+GPG_SIGN_TYPE="00" #RFC4880 section 5.2.1
+
+if [[ -z "$GPG_KEY_FINGERPRINT" ]]; then
+    GPG_KEY_FINGERPRINT=$(pgpkms export | gpg --show-key --with-colons | grep fpr | cut -d ':' -f 10)
+fi
+
+SIGNATURE=$(pgpkms sign) &&
+echo "[GNUPG:] KEY_CONSIDERED $GPG_KEY_FINGERPRINT" 1>&2 &&
+echo "[GNUPG:] BEGIN_SIGNING H$HASH_ALG" 1>&2 &&
+echo "[GNUPG:] SIG_CREATED D $RSA_ALG $HASH_ALG $GPG_SIGN_TYPE $(date +%s) $GPG_KEY_FINGERPRINT" 1>&2 &&
+echo "$SIGNATURE"
