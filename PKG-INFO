@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pgpkms
-Version: 1.2.0
+Version: 1.2.1
 Summary: PGP signatures with AWS KMS keys
 Home-page: https://github.com/juitnow/pgpkms
 Author: Juit Developers
@@ -138,7 +138,7 @@ signatures compatible with GnuPG / OpenPGP.
   kms_client = session.create_client('kms')
   ```
 
-#### `kmsPgpKey.to_pgp(hash='sha256', armoured=True, kms_client=None)`
+#### `kmsPgpKey.to_pgp(hash='sha256', armoured=True, kms_client=None, expiration = 365)`
 
 Return the public key from AWS KMS wrapped in an OpenPGP v4 key format as a
 `bytes` string.

@@ -49,8 +49,12 @@ def __export(key, hash, input = None, output = None, armoured = True):
 
   exp_days = int(os.environ.get('GPG_KEY_EXPIRATION', 0))
 
-  key = KmsPgpKey(key, kms_client = kms_client, expiration = exp_days)
-  pgp_key = key.to_pgp(armoured = armoured, hash = hash, kms_client = kms_client)
+  key = KmsPgpKey(key, kms_client = kms_client)
+  pgp_key = key.to_pgp(armoured = armoured, 
+                       hash = hash, 
+                       kms_client = kms_client, 
+                       expiration = exp_days
+                      )
 
   o = open(output, 'wb') if output else sys.stdout.buffer
   o.write(pgp_key)

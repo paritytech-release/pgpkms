@@ -42,7 +42,7 @@ class KmsPgpKey:
   signatures compatible with GnuPG / OpenPGP.
   """
 
-  def __init__(self, key_id, kms_client = None, expiration = None):
+  def __init__(self, key_id, kms_client = None):
     """
     Initialize a new "KmsPgpKey" instance.
 
@@ -130,17 +130,6 @@ class KmsPgpKey:
     self.modulus = int(pk['modulus'])
     self.exponent = int(pk['publicExponent'])
 
-    expiration_days = int(expiration)
-    if not expiration_days:
-      expiration_days = DEFAULT_KEY_EXP_DAYS
-    if expiration_days<1:
-      raise ValueError("GPG key expiration time must be more than 1 day")
-    # The expiration time is represented as an offset from the key creation time.
-    # To make it more clear, i.e. from the current moment, it is needed to find the delta
-    # between now and the key creation timestamp, which is fixed by the KMS key creation
-    time_delta_seconds = int(time()) - self.creation_date
-    self.expire_in_seconds = time_delta_seconds + expiration_days * 86400 #convert days to seconds
-
 
   @property
   def __pgp_key(self):
@@ -194,7 +183,7 @@ class KmsPgpKey:
 
 
 
-  def to_pgp(self, hash='sha256', armoured=True, kms_client=None):
+  def to_pgp(self, hash='sha256', armoured=True, kms_client=None, expiration = DEFAULT_KEY_EXP_DAYS):
     """
     Return the public key from AWS KMS wrapped in an OpenPGP v4 key format.
 
@@ -232,6 +221,15 @@ class KmsPgpKey:
     payload += KEY_ALGORITHM_RSA
     payload += hash_algorithm
 
+    expiration_days = int(expiration) if expiration else DEFAULT_KEY_EXP_DAYS
+    if expiration_days<1:
+      raise ValueError("GPG key expiration time must be more than 1 day")
+    # The expiration time is represented as an offset from the key creation time.
+    # To make it more clear, i.e. from the current moment, it is needed to find the delta
+    # between now and the key creation timestamp, which is fixed by the KMS key creation
+    time_delta_seconds = int(time()) - self.creation_date
+    expire_in_seconds = time_delta_seconds + expiration_days * 86400 #convert days to seconds
+
     # Those are all our hashed subpackets. Note the encryption algorithm and
     # compression algorithms in here... They shouldn't be (as with AWS keys we
     # we can only either sign _OR_ encrypt). That saidt most other keys I've
@@ -239,7 +237,7 @@ class KmsPgpKey:
     # our hands up in the air and party like it's 1998! (yes, this is shit!)
     hashed_subpackets =  __subpacket(SUBPACKET_ISSUER_FINGERPRINT, b'\x04' + self.__pgp_fingerprint)
     hashed_subpackets += __subpacket(SUBPACKET_SIGNATURE_CREATION_TIME, self.creation_date.to_bytes(4, 'big'))
-    hashed_subpackets += __subpacket(SUBPACKET_EXPIRATION, self.expire_in_seconds.to_bytes(4, 'big'))
+    hashed_subpackets += __subpacket(SUBPACKET_EXPIRATION, expire_in_seconds.to_bytes(4, 'big'))
     hashed_subpackets += __subpacket(SUBPACKET_KEY_FLAGS, b'\x03') # OR-ed flags: 0x01 => certify, 0x02 => sign
     hashed_subpackets += __subpacket(SUBPACKET_ENCRYPTION_ALGORITHMS, b'\x09\x08\x07') # 0x09 => AES256, 0x08 => AES192, 0x07 => AES128
     hashed_subpackets += __subpacket(SUBPACKET_HASH_ALGORITHMS, b'\x0a\x09\x08') # 0x0A => SHA512, 0x09 => SHA384, 0x08 => SHA256

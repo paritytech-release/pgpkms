@@ -139,7 +139,7 @@ signatures compatible with GnuPG / OpenPGP.
   kms_client = session.create_client('kms')
   ```
 
-#### `kmsPgpKey.to_pgp(hash='sha256', armoured=True, kms_client=None)`
+#### `kmsPgpKey.to_pgp(hash='sha256', armoured=True, kms_client=None, expiration = 365)`
 
 Return the public key from AWS KMS wrapped in an OpenPGP v4 key format as a
 `bytes` string.
@@ -179,6 +179,8 @@ OpenPGP formatted message and signature.
 ---------------------
 Compared with the original **v1.0.7 by Juit Developers:**
 
+- 1.2.1: Move expiration date parameter to `to_pgp` method instead of the whole class, to fix the signatures
+
 - 1.2.0: add `GPG_KEY_EXPIRATION` env variable for the GPG public key, GPG keys can expire
 
 - 1.1.1: add `GPG_KEY_FINGERPRINT` env variable for Git commit signing
@@ -186,3 +188,5 @@ Compared with the original **v1.0.7 by Juit Developers:**
 - 1.1.0: adds GPG commit signing emulation
 
 - 1.0.8: makes the `PGP_KMS_KEY` environmental variable really working, and removes the hardcoded key name from the code. Removes the `-k` option from the list of options as not really used.
+
+- 1.0.7: Origial Python package by Juit Developers
