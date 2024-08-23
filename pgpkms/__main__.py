@@ -28,6 +28,8 @@ def __help():
     Environment Variables:
       PGP_KMS_KEY            The default ID, ARN or alias of the key to use.
       PGP_KMS_HASH           The hashing algorithm to use (default tp "sha256").
+      GPG_KEY_EXPIRATION     Expiration of the key, in days
+      GPG_KEY_FINGERPRINT    Set this to make less calls to AWS (long format GPG key fingerpint)
 
     Examples
 
@@ -45,8 +47,9 @@ def __export(key, hash, input = None, output = None, armoured = True):
   session = aws.get_session()
   kms_client = session.create_client('kms')
 
-  key = KmsPgpKey(key, kms_client = kms_client)
+  exp_days = int(os.environ.get('GPG_KEY_EXPIRATION', 0))
 
+  key = KmsPgpKey(key, kms_client = kms_client, expiration = exp_days)
   pgp_key = key.to_pgp(armoured = armoured, hash = hash, kms_client = kms_client)
 
   o = open(output, 'wb') if output else sys.stdout.buffer

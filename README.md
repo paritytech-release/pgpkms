@@ -61,8 +61,9 @@ or just `pgpkms <command> [options]` if the package is installed in a python vir
 #### Environment Variables:
 
 * `PGP_KMS_KEY`: The default ID, ARN or alias of the key to use.
+* `GPG_KEY_EXPIRATION`: Public GPG key expiration time, in days, to be used for the key during the `export` command
 * `PGP_KMS_HASH`: The hashing algorithm to use (default tp "sha256").
-* `GPG_KEY_FINGERPRINT`: Set this to reduce the amount of requests to KMS during Git commit signing
+* `GPG_KEY_FINGERPRINT`: Set this to reduce the amount of requests to KMS during Git commit signing (optionally, but highly recommended)
 
 In addition, AWS variables for the `boto` AWS Python module:
 
@@ -177,6 +178,8 @@ OpenPGP formatted message and signature.
 
 ---------------------
 Compared with the original **v1.0.7 by Juit Developers:**
+
+- 1.2.0: add `GPG_KEY_EXPIRATION` env variable for the GPG public key, GPG keys can expire
 
 - 1.1.1: add `GPG_KEY_FINGERPRINT` env variable for Git commit signing
 
