@@ -96,9 +96,14 @@ source venv/bin/activate
 
 Install the whole package by `pip3 install .` from the root of the repo, it will make `pgpkms-git` and `pgpkms` scripts quickly accessible.
 
-Then export the public key to the local gpg: `pgpkms export  | gpg --import`
+Prepare GPG:
 
-And also obtain the fingerprint of the key: `pgpkms export | gpg --show-key`
+* use `gpg --import` to import an already prepared KMS-based GPG key
+
+OR (not recommended, since it produces more versions of public keys):
+
+* export the public key to the local gpg: `pgpkms export  | gpg --import`
+* obtain the fingerprint of the key: `pgpkms export | gpg --show-key`
 
 Then configure the local git:
 
@@ -110,8 +115,32 @@ git config --local user.email <What was in the PGPEmail tag above>
 git config --local user.signingKey <GPG Key fingerprint>
 ```
 
-A normal `git commit` will produce a signed commit. 
-However, reading git signatures like `git log --show-signature` won't be supported, it is needed to change `gpg.program` back to `gpg`, to verify the signatures, because this signing workflow is only designed for securely signing in the pipelines.
+A normal `git commit` will produce a signed commit.
+However, reading git signatures like `git log --show-signature` **won't be supported**, it is needed to change `gpg.program` back to `gpg`, to verify the signatures, because this signing workflow is only designed for securely signing in the pipelines.
+
+#### Using for reprepro
+
+First, create and activate a Python virtualenv by
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Install the whole package by `pip3 install .` from the root of the repo, it will make `pgpkms-reprepro`, `pgpkms` and `prepare-to-gpg-clearsign` scripts quickly accessible.
+
+Prepare GPG:
+
+* use `gpg --import` to import an already prepared KMS-based GPG key
+
+OR (not recommended, since it produces more versions of public keys):
+
+* export the public key to the local gpg: `pgpkms export  | gpg --import`
+* obtain the fingerprint of the key: `pgpkms export | gpg --show-key`
+
+Then configure the reprepro instance. It is needed to leverage the **SignWith** setting in the hook mode, as it described [there](https://salsa.debian.org/debian/reprepro/-/blob/debian/docs/manual.html):
+
+`SignWith: ! /path/to/pgpkms-reprepro`, i.e. an exclamation mark followed by a space and the full or relative path to a hook script to call. Use `which pgpkms-reprepro` to quickly get it. 
 
 Library Usage
 -------------
@@ -178,6 +207,8 @@ OpenPGP formatted message and signature.
 
 ---------------------
 Compared with the original **v1.0.7 by Juit Developers:**
+
+- 1.3.0: Support for Debian Repository manager reprepro
 
 - 1.2.1: Move expiration date parameter to `to_pgp` method instead of the whole class, to fix the signatures
 
