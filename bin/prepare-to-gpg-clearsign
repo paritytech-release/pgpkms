@@ -1,0 +1,28 @@
+#!/usr/bin/env python
+
+#This script prepares a text data for the GPG clearsign mode 
+#(see RFC https://datatracker.ietf.org/doc/html/rfc2440#section-7.1) 
+#It takes stdin, 
+#strips every line with removing trailing spaces, tabs,
+#converts LF to CRLF, 
+#removes the trailing newline(s) in the end of the stream,
+#writes everything to stdout
+
+import sys
+
+CRLF = bytearray("\r\n".encode('utf-8'))
+nl_buffer = bytearray()
+stdout_data_write_happened = False
+
+for line in sys.stdin:
+    temp_line = line.rstrip("\r\n\t ")
+    if temp_line:
+        if stdout_data_write_happened:
+            sys.stdout.buffer.write(CRLF)
+        if nl_buffer:
+            sys.stdout.buffer.write(nl_buffer)
+            nl_buffer.clear()
+        sys.stdout.buffer.write(temp_line.encode("utf-8"))
+        stdout_data_write_happened = True
+    else:
+        nl_buffer += CRLF
