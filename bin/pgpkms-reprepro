@@ -13,9 +13,6 @@
 #see the RFC first if you encountered with any signature validation issues and you want to change the code
 #https://datatracker.ietf.org/doc/html/rfc2440#section-7.1
 
-GPG_INLINE_HEADER="-----BEGIN PGP SIGNED MESSAGE-----"
-GPG_HASH_HEADER="Hash: $(echo "$PGP_KMS_HASH" | tr '[:lower:]' '[:upper:]')"
-
 FILENAME_TO_SIGN="$1"
 IN_RELEASE_FILE_INLINED="$2"
 RELEASE_GPG_FILE_DETACHED="$3"
@@ -31,13 +28,7 @@ if [[ -z "$IN_RELEASE_FILE_INLINED" ]]; then
    exit 2
 fi
 
-SIGNATURE_INLINE=$(cat "$FILENAME_TO_SIGN" | prepare-to-gpg-clearsign | pgpkms sign)
-
-echo "$GPG_INLINE_HEADER" > "$IN_RELEASE_FILE_INLINED"
-echo "$GPG_HASH_HEADER"  >> "$IN_RELEASE_FILE_INLINED"
-echo ""                  >> "$IN_RELEASE_FILE_INLINED"
-cat  "$FILENAME_TO_SIGN" >> "$IN_RELEASE_FILE_INLINED"
-echo "$SIGNATURE_INLINE" >> "$IN_RELEASE_FILE_INLINED"
+cat "$FILENAME_TO_SIGN" | pgpkms message > "$IN_RELEASE_FILE_INLINED"
 
 if [[ -n "$RELEASE_GPG_FILE_DETACHED" ]]; then
    cat "$FILENAME_TO_SIGN" | pgpkms sign > "$RELEASE_GPG_FILE_DETACHED"
