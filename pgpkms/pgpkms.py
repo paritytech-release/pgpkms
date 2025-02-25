@@ -438,6 +438,9 @@ class KmsPgpKey:
     message and signature.
     """
 
+    #see the RFC first if you encountered with any signature validation issues and you want to change the code
+    #https://datatracker.ietf.org/doc/html/rfc2440#section-7.1
+
     (hash_algorithm, hash_length, hasher) = \
       (b'\x08', 256, hashlib.sha256()) if hash == 'sha256' else \
       (b'\x09', 384, hashlib.sha384()) if hash == 'sha384' else \
@@ -473,7 +476,7 @@ class KmsPgpKey:
 
     # Encode a line in UTF-8 and write it to the output, followed by the
     # OS-dependent newline character...
-    def __write_encoded(line):
+    def __write_encoded(line, is_last_line=False):
       # RFC4880, section 7.1: Dash-Escaped Text
       if line.startswith('-'):
         line = '- ' + line
@@ -482,14 +485,16 @@ class KmsPgpKey:
       # Now we have a somewhat proper string
       encoded = line.encode('utf-8')
       output.write(encoded)
-      output.write(eol)
+      if not is_last_line:
+        output.write(eol)
       return encoded
 
     # Write a line to the output _and_ update the hasher with its contents
-    def __add_line(line):
-      encoded = __write_encoded(line)
-      hasher.update(encoded)
-      hasher.update(b'\r\n')
+    def __add_line(line, is_last_line=False):
+        encoded = __write_encoded(line, is_last_line)
+        hasher.update(encoded)
+        if not is_last_line:
+            hasher.update(b'\r\n')
 
     # Message preamble
     output.write('-----BEGIN PGP SIGNED MESSAGE-----'.encode('utf-8') + eol)
@@ -498,22 +503,25 @@ class KmsPgpKey:
 
     # Process lines, depending on input type
     if isinstance(input, str):
-      lines = input.splitlines()
-      for line in lines:
-        __add_line(line)
+        lines = input.splitlines()
+        for i, line in enumerate(lines):
+            __add_line(line, is_last_line=(i == len(lines) - 1))
 
     elif isinstance(input, bytes):
-      lines = input.decode('utf-8').splitlines()
-      for line in lines:
-        __add_line(line)
+        lines = input.decode('utf-8').splitlines()
+        for i, line in enumerate(lines):
+            __add_line(line, is_last_line=(i == len(lines) - 1))
 
     elif isinstance(input, TextIOWrapper):
-      for lines in input:
-        for line in lines.splitlines():
-          __add_line(line)
+        # For file input, we need to read all lines first to know which is last
+        lines = [line.rstrip('\n') for line in input]
+        for i, line in enumerate(lines):
+            for j, subline in enumerate(line.splitlines()):
+                is_last_line = (i == len(lines) - 1) and (j == len(line.splitlines()) - 1)
+                __add_line(subline, is_last_line=is_last_line)
 
     else:
-      raise AssertionError('Wrong type for input')
+        raise AssertionError('Wrong type for input')
 
     output.write(eol)
 

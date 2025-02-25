@@ -208,6 +208,8 @@ OpenPGP formatted message and signature.
 ---------------------
 Compared with the original **v1.0.7 by Juit Developers:**
 
+- 1.3.1: Fix of GPG clearsign message generation - affects reprepro signing
+
 - 1.3.0: Support for Debian Repository manager reprepro
 
 - 1.2.1: Move expiration date parameter to `to_pgp` method instead of the whole class, to fix the signatures
@@ -220,4 +222,4 @@ Compared with the original **v1.0.7 by Juit Developers:**
 
 - 1.0.8: makes the `PGP_KMS_KEY` environmental variable really working, and removes the hardcoded key name from the code. Removes the `-k` option from the list of options as not really used.
 
-- 1.0.7: Origial Python package by Juit Developers
+- 1.0.7: Origial Python package by Juit Developers - this repo code extracted from this package
