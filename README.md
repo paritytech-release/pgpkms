@@ -1,14 +1,62 @@
-Using AWS KMS keys for PGP
-==========================
 
-This library (and command line utlity) allows to use AWS KMS keys (RSA only,
-for now) to generate GnuPG / OpenPGP compatible signatures (v4).
+# Cloud KMS Provider Support
 
-* [Preparing keys in KMS](#preparing-keys-in-kms)
+This library (and command line utility) allows you to use both **AWS KMS** and **Google Cloud KMS (GCP KMS)** RSA keys to generate GnuPG / OpenPGP compatible signatures (v4). The provider is detected automatically based on the key format.
+
+* [AWS KMS Support](#aws-kms-support)
+* [Google Cloud KMS Support](#google-cloud-kms-support)
 * [Command Line Usage](#command-line-usage)
 * [Library Usage](#library-usage)
 * [Copyright Notice](NOTICE.md)
 * [License](LICENSE.md)
+
+## AWS KMS Support
+
+### Preparing keys in AWS KMS
+
+You can use the AWS console, AWS CLI, CloudFormation, or Terraform to create an RSA "signing" key in AWS KMS.
+
+By default, the _User ID_ associated with the key will be something like `PgpKms-AwsWrapper (...uuid...)` where `uuid` is the random UUID associated with the key in KMS.
+
+To specify a _User ID_ in the format `Name <email@domain>`, add these tags to the AWS key:
+
+* `PGPName`: the `Name` part of the _User ID_.
+* `PGPEmail`: the `email@domain` part of the _User ID_.
+
+### Required Environment Variables for AWS
+
+* `PGP_KMS_KEY`: The default ID, ARN or alias of the key to use.
+* `GPG_KEY_EXPIRATION`: Public GPG key expiration time, in days, to be used for the key during the `export` command
+* `PGP_KMS_HASH`: The hashing algorithm to use (default to "sha256").
+* `GPG_KEY_FINGERPRINT`: Set this to reduce the amount of requests to KMS during Git commit signing (optionally, but highly recommended)
+
+AWS credentials and region variables (for the `boto` AWS Python module):
+
+* `AWS_ACCESS_KEY_ID`: AWS Service account key id
+* `AWS_SECRET_ACCESS_KEY`: AWS Service account secret key
+* `AWS_DEFAULT_REGION`: AWS Region of the key
+
+## Google Cloud KMS Support
+
+### Preparing keys in Google Cloud KMS
+
+Create an RSA key in Google Cloud KMS with the "Asymmetric Sign" purpose and "RSA_SIGN_PKCS1_2048_SHA256" or similar algorithm.
+
+You can add labels to the key to specify the PGP user ID:
+* `pgp-name`: the `Name` part of the _User ID_.
+* `pgp-email`: the `email@domain` part of the _User ID_.
+
+If these labels are not set, a default user ID will be generated.
+
+### Required Environment Variables for GCP
+
+* `GOOGLE_APPLICATION_CREDENTIALS`: Path to the service account JSON credentials file with access to the KMS key.
+* `PGP_KMS_KEY`: The full resource name of the GCP KMS key version, e.g.:
+  ```
+  projects/<project>/locations/<location>/keyRings/<keyring>/cryptoKeys/<key>/cryptoKeyVersions/<version>
+  ```
+
+All command line and library usage is the same as for AWS KMS keys. The provider is detected automatically based on the key format.
 
 Preparing keys in KMS
 ---------------------
@@ -23,8 +71,10 @@ associated with the key in KMS.
 In order to properly specify a _User ID_ in the format of `Name <email@domain>`
 we can use a couple of _tags_ on the AWS key itself:
 
+
 * `PGPName`: the `Name` part of the _User ID_.
 * `PGPEmail`: the `email@domain` part of the _User ID_.
+
 
 Command Line Usage
 ------------------
@@ -77,6 +127,26 @@ Export the (unarmoured) public key into the "trusted.gpg" file.
 
 ```bash
 $ python3 -m pgpkms export --binary --output trusted.gpg
+````
+
+Running Tests
+-------------
+
+This project uses `pipenv` for dependency management and testing.
+
+To run all tests:
+
+```bash
+pipenv install --dev
+pipenv run python -m unittest discover tests -v
+```
+
+You can also run a specific test file, for example:
+
+```bash
+pipenv run python -m unittest tests.test_aws_kms -v
+pipenv run python -m unittest tests.test_gcp_kms -v
+pipenv run python -m unittest tests.test_generic -v
 ```
 
 Sign the file "myfile.bin" and emit the armoured signature to stdout.
