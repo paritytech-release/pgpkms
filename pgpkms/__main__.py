@@ -26,10 +26,13 @@ def __help():
       --sha[256|384|512]     Use the specified hashing algorithm.
 
     Environment Variables:
-      PGP_KMS_KEY            The default ID, ARN or alias of the key to use.
-      PGP_KMS_HASH           The hashing algorithm to use (default tp "sha256").
+      PGP_KMS_KEY            The default ID, ARN, alias, or resource name of the key to use.
+      PGP_KMS_HASH           The hashing algorithm to use (default to "sha256").
       GPG_KEY_EXPIRATION     Expiration of the key, in days
-      GPG_KEY_FINGERPRINT    Set this to make less calls to AWS (long format GPG key fingerpint)
+      GPG_KEY_FINGERPRINT    Set this to make less calls to KMS (long format GPG key fingerprint)
+      
+      For Google Cloud KMS:
+      GOOGLE_APPLICATION_CREDENTIALS  Path to service account key file
 
     Examples
 
@@ -44,15 +47,11 @@ def __help():
 # ==============================================================================
 
 def __export(key, hash, input = None, output = None, armoured = True):
-  session = aws.get_session()
-  kms_client = session.create_client('kms')
-
   exp_days = int(os.environ.get('GPG_KEY_EXPIRATION', 0))
 
-  key = KmsPgpKey(key, kms_client = kms_client)
+  key = KmsPgpKey(key)
   pgp_key = key.to_pgp(armoured = armoured, 
                        hash = hash, 
-                       kms_client = kms_client, 
                        expiration = exp_days
                       )
 
@@ -65,14 +64,11 @@ def __export(key, hash, input = None, output = None, armoured = True):
 # ==============================================================================
 
 def __sign(key, hash, input = None, output = None, armoured = True):
-  session = aws.get_session()
-  kms_client = session.create_client('kms')
-
-  key = KmsPgpKey(key, kms_client = kms_client)
+  key = KmsPgpKey(key)
 
   i = open(input, 'rb') if input else sys.stdin.buffer
 
-  signature = key.sign(i, armoured = armoured, hash = hash, kms_client = kms_client)
+  signature = key.sign(i, armoured = armoured, hash = hash)
 
   o = open(output, 'wb') if output else sys.stdout.buffer
   o.write(signature)
@@ -83,15 +79,12 @@ def __sign(key, hash, input = None, output = None, armoured = True):
 # ==============================================================================
 
 def __message(key, hash, input = None, output = None, armoured = True):
-  session = aws.get_session()
-  kms_client = session.create_client('kms')
-
-  key = KmsPgpKey(key, kms_client = kms_client)
+  key = KmsPgpKey(key)
 
   i = open(input, 'r') if input else sys.stdin # text reads!
   o = open(output, 'wb') if output else sys.stdout.buffer # write binary!
 
-  signature = key.message(i, o, hash = hash, kms_client = kms_client)
+  signature = key.message(i, o, hash = hash)
 
   sys.exit(0)
 

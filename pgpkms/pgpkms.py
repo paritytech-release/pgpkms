@@ -9,6 +9,7 @@ from time import time
 from os import linesep
 
 from .armour import armour
+from .kms_providers import get_kms_provider, KMSProvider
 
 KEY_VERSION = b'\x04'
 KEY_ALGORITHM_RSA = b'\x01'
@@ -38,8 +39,8 @@ DEFAULT_KEY_EXP_DAYS = 365
 
 class KmsPgpKey:
   """
-  The "KmsPgpKey" class wraps an AWS KMS key and is capable of producing
-  signatures compatible with GnuPG / OpenPGP.
+  The "KmsPgpKey" class wraps an AWS KMS or Google Cloud KMS key and is capable 
+  of producing signatures compatible with GnuPG / OpenPGP.
   """
 
   def __init__(self, key_id, kms_client = None):
@@ -50,67 +51,70 @@ class KmsPgpKey:
     -----------
 
     key_id (str, required):
-      The ID, ARN or alias of the AWS KMS key. This can be one of the following:
+      The ID, ARN or resource name of the KMS key. This can be one of the following:
+      
+      AWS KMS:
         - Key ID: e.g. "1234abcd-12ab-34cd-56ef-1234567890ab"
         - Key ARN: e.g. "arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
         - Alias name: e.g. "alias/ExampleAlias"
         - Alias ARN: "arn:aws:kms:us-east-2:111122223333:alias/ExampleAlias"
+      
+      Google Cloud KMS:
+        - Resource name: e.g. "projects/my-project/locations/us-east1/keyRings/my-ring/cryptoKeys/my-key/cryptoKeyVersions/1"
 
     kms_client:
-      A BotoCore "KMS" client, if "None" this will be initialized as:
-        | session = botocore.session.get_session()
-        | kms_client = session.create_client('kms')
+      A KMS client. If "None", this will be auto-detected and initialized based on the key format:
+        AWS: BotoCore KMS client
+        Google Cloud: google.cloud.kms.KeyManagementServiceClient
 
     Notes:
     ------
 
-    In order to supply the User ID information in the PGP key, the AWS KMS key
-    should provide two tags:
+    In order to supply the User ID information in the PGP key, the KMS key
+    should provide tags/labels:
 
-      - PGPName: the display name to associate with the PGP key.
-      - PGPEmail: the email address to associate with the PGP key.
+      AWS KMS tags:
+        - PGPName: the display name to associate with the PGP key.
+        - PGPEmail: the email address to associate with the PGP key.
 
-    If those tags are not present a simple user id will be generated from the
-    AWS KMS key id (an opaque random UUID).
+      Google Cloud KMS labels:
+        - pgp-name: the display name to associate with the PGP key.
+        - pgp-email: the email address to associate with the PGP key.
+
+    If those tags/labels are not present a simple user id will be generated from the
+    KMS key id.
     """
 
-    # Create a KMS client if none was specified
-    if kms_client == None:
-      session = aws.get_session()
-      kms_client = session.create_client('kms')
+    # Auto-detect provider and get KMS provider instance
+    self.provider = get_kms_provider(key_id, kms_client)
+    self.key_id = key_id
 
-    # Get the key and remember the ARN
-    key = kms_client.get_public_key(KeyId=key_id)
-    self.arn = key['KeyId']
+    # Get key information using the provider
+    key_info = self.provider.get_public_key_info(key_id)
+    self.arn = key_info['arn']
+    self.creation_date = key_info['creation_date']
+    
+    # Get tags/labels using the provider
+    tags = self.provider.get_key_tags(key_id)
 
-    # Get metadata and tags
-    metadata = kms_client.describe_key(KeyId=self.arn)
-    tags = kms_client.list_resource_tags(KeyId=self.arn)
+    # The user_id is calculated from the tags/labels
+    # AWS uses PGPName/PGPEmail, GCP uses pgp-name/pgp-email
+    name = tags.get('PGPName') or tags.get('pgp-name')
+    email = tags.get('PGPEmail') or tags.get('pgp-email')
 
-    # The creation_date as an integer in seconds from the epoch
-    self.creation_date = int(metadata['KeyMetadata']['CreationDate'].timestamp())
-
-    # The user_id is calculated from the "PGPName" and "PGPEmail" tags
-    name = None
-    email = None
-
-    for tag in tags['Tags']:
-      if tag['TagKey'] == 'PGPName':
-        name = tag['TagValue']
-      elif tag['TagKey'] == 'PGPEmail':
-        email = tag['TagValue']
-
-    if (name != None) & (email != None):
+    if name and email:
       self.user_id = '%s <%s>' % (name, email)
-    elif email != None:
+    elif email:
       self.user_id = email
-    elif name != None:
+    elif name:
       self.user_id = name
     else:
-      self.user_id = 'PgpKms-AwsWrapper (%s)' % (metadata['KeyMetadata']['KeyId'])
+      # Generate a generic user ID from the key identifier
+      key_display = key_id.split('/')[-1] if '/' in key_id else key_id
+      self.user_id = 'PgpKms-Wrapper (%s)' % key_display
 
-    # Check the AWS "KeySpec" to assert type and length of the key
-    key_spec = key['KeySpec']
+    # Check the KeySpec to assert type and length of the key
+    key_spec = key_info['key_spec']
     self.bits = 2048 if key_spec == 'RSA_2048' else \
                 3072 if key_spec == 'RSA_3072' else \
                 4096 if key_spec == 'RSA_4096' else \
@@ -119,9 +123,9 @@ class KmsPgpKey:
     assert self.bits is not None, 'Wrong spec %s for key %s' % (key_spec, self.arn)
 
     # Decode the ASN.1 structure to get modulo and exponent as numbers
-    public_key = key['PublicKey']
+    public_key_der = key_info['public_key_der']
 
-    (spki, rest) = decoder.decode(public_key, asn1Spec=SubjectPublicKeyInfo())
+    (spki, rest) = decoder.decode(public_key_der, asn1Spec=SubjectPublicKeyInfo())
 
     spk = spki.getComponentByName('subjectPublicKey').asOctets()
 
@@ -165,21 +169,10 @@ class KmsPgpKey:
 
 
   def __sign_kms(self, digest, hash_length, kms_client=None):
-    # Create a KMS client if none was specified
-    if kms_client == None:
-      session = aws.get_session()
-      kms_client = session.create_client('kms')
-
-    # PGP luckily wants PKCS1 v1.5 for signatures
-    signature = kms_client.sign(
-      KeyId = self.arn,
-      Message = digest,
-      MessageType = 'DIGEST',
-      SigningAlgorithm = 'RSASSA_PKCS1_V1_5_SHA_%s' % hash_length,
-    )
-
-    # Get the integer, as we'll convert it in a PGP's own MPI
-    return int.from_bytes(signature['Signature'], 'big')
+    # Use the provider to sign the digest
+    # Note: kms_client parameter is kept for backward compatibility but ignored
+    # The provider uses its own client
+    return self.provider.sign_digest(self.key_id, digest, hash_length)
 
 
 
@@ -207,11 +200,14 @@ class KmsPgpKey:
     A "bytes" string containing the GnuPG / OpenPGP formatted public key.
     """
 
-    (hash_algorithm, hash_length, hasher) = \
-      (b'\x08', 256, hashlib.sha256()) if hash == 'sha256' else \
-      (b'\x09', 384, hashlib.sha384()) if hash == 'sha384' else \
-      (b'\x0a', 512, hashlib.sha512()) if hash == 'sha512' else \
-      (None, None)
+    if hash == 'sha256':
+      (hash_algorithm, hash_length, hasher) = (b'\x08', 256, hashlib.sha256())
+    elif hash == 'sha384':
+      (hash_algorithm, hash_length, hasher) = (b'\x09', 384, hashlib.sha384())
+    elif hash == 'sha512':
+      (hash_algorithm, hash_length, hasher) = (b'\x0a', 512, hashlib.sha512())
+    else:
+      hash_algorithm = None
 
     assert hash_algorithm, 'Wrong hash algorithm %s for signature' % (hash)
 
@@ -221,7 +217,7 @@ class KmsPgpKey:
     payload += KEY_ALGORITHM_RSA
     payload += hash_algorithm
 
-    expiration_days = int(expiration) if expiration else DEFAULT_KEY_EXP_DAYS
+    expiration_days = int(expiration) if expiration is not None else DEFAULT_KEY_EXP_DAYS
     if expiration_days<1:
       raise ValueError("GPG key expiration time must be more than 1 day")
     # The expiration time is represented as an offset from the key creation time.
@@ -336,11 +332,14 @@ class KmsPgpKey:
     A "bytes" string containing the GnuPG / OpenPGP formatted signature.
     """
 
-    (hash_algorithm, hash_length, hasher) = \
-      (b'\x08', 256, hashlib.sha256()) if hash == 'sha256' else \
-      (b'\x09', 384, hashlib.sha384()) if hash == 'sha384' else \
-      (b'\x0a', 512, hashlib.sha512()) if hash == 'sha512' else \
-      (None, None)
+    if hash == 'sha256':
+      (hash_algorithm, hash_length, hasher) = (b'\x08', 256, hashlib.sha256())
+    elif hash == 'sha384':
+      (hash_algorithm, hash_length, hasher) = (b'\x09', 384, hashlib.sha384())
+    elif hash == 'sha512':
+      (hash_algorithm, hash_length, hasher) = (b'\x0a', 512, hashlib.sha512())
+    else:
+      hash_algorithm = None
 
     assert hash_algorithm, 'Wrong hash algorithm %s for signature' % (hash)
 
@@ -367,7 +366,7 @@ class KmsPgpKey:
       hasher.update(str.encode('utf-8'))
     elif isinstance(input, bytes):
       hasher.update(input)
-    elif isinstance(input, BufferedReader):
+    elif hasattr(input, 'read'):
       while chunk := input.read(65536):
         hasher.update(chunk)
     else:
@@ -441,11 +440,14 @@ class KmsPgpKey:
     #see the RFC first if you encountered with any signature validation issues and you want to change the code
     #https://datatracker.ietf.org/doc/html/rfc2440#section-7.1
 
-    (hash_algorithm, hash_length, hasher) = \
-      (b'\x08', 256, hashlib.sha256()) if hash == 'sha256' else \
-      (b'\x09', 384, hashlib.sha384()) if hash == 'sha384' else \
-      (b'\x0a', 512, hashlib.sha512()) if hash == 'sha512' else \
-      (None, None)
+    if hash == 'sha256':
+      (hash_algorithm, hash_length, hasher) = (b'\x08', 256, hashlib.sha256())
+    elif hash == 'sha384':
+      (hash_algorithm, hash_length, hasher) = (b'\x09', 384, hashlib.sha384())
+    elif hash == 'sha512':
+      (hash_algorithm, hash_length, hasher) = (b'\x0a', 512, hashlib.sha512())
+    else:
+      hash_algorithm = None
 
     assert hash_algorithm, 'Wrong hash algorithm %s for signature' % (hash)
 
@@ -512,8 +514,8 @@ class KmsPgpKey:
         for i, line in enumerate(lines):
             __add_line(line, is_last_line=(i == len(lines) - 1))
 
-    elif isinstance(input, TextIOWrapper):
-        # For file input, we need to read all lines first to know which is last
+    elif hasattr(input, 'read') and hasattr(input, '__iter__'):
+        # For file-like input, we need to read all lines first to know which is last
         lines = [line.rstrip('\n') for line in input]
         for i, line in enumerate(lines):
             for j, subline in enumerate(line.splitlines()):
