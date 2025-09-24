@@ -364,7 +364,7 @@ class KmsPgpKey:
       hasher.update(str.encode('utf-8'))
     elif isinstance(input, bytes):
       hasher.update(input)
-    elif hasattr(input, 'read'):
+    elif isinstance(input, BufferedReader):
       while chunk := input.read(65536):
         hasher.update(chunk)
     else:
@@ -512,8 +512,8 @@ class KmsPgpKey:
         for i, line in enumerate(lines):
             __add_line(line, is_last_line=(i == len(lines) - 1))
 
-    elif hasattr(input, 'read') and hasattr(input, '__iter__'):
-        # For file-like input, we need to read all lines first to know which is last
+    elif isinstance(input, TextIOWrapper):
+        # For file input, we need to read all lines first to know which is last
         lines = [line.rstrip('\n') for line in input]
         for i, line in enumerate(lines):
             for j, subline in enumerate(line.splitlines()):

@@ -105,12 +105,10 @@ class TestGenericKmsPgpKey(unittest.TestCase):
     def test_sign_file_input(self):
         """Test signing file-like input."""
         key, mock_client = self.create_aws_key_with_mocks()
-        
-        file_content = BytesIO(b"Hello from file!")
-        
+        # Wrap BytesIO in BufferedReader to match accepted types
+        file_content = BufferedReader(BytesIO(b"Hello from file!"))
         with patch('time.time', return_value=1672574400):
             signature = key.sign(file_content)
-        
         self.assertIsInstance(signature, bytes)
         sig_str = signature.decode('utf-8')
         self.assertIn('-----BEGIN PGP SIGNATURE-----', sig_str)
