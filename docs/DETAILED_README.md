@@ -269,21 +269,18 @@ Compared with the original **v1.0.7 by Juit Developers:**
 Running Tests
 -------------
 
-This project uses `pipenv` for dependency management and testing.
-
 To run all tests:
 
 ```bash
-pipenv install --dev
-pipenv run python -m unittest discover tests -v
+python -m unittest discover tests -v
 ```
 
 You can also run a specific test file, for example:
 
 ```bash
-pipenv run python -m unittest tests.test_aws_kms -v
-pipenv run python -m unittest tests.test_gcp_kms -v
-pipenv run python -m unittest tests.test_generic -v
+python3 -m unittest tests.test_aws_kms -v
+python3 -m unittest tests.test_gcp_kms -v
+python3 -m unittest tests.test_generic -v
 ```
 
 Sign the file "myfile.bin" and emit the armoured signature to stdout.
