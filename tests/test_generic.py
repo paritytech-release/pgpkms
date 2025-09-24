@@ -17,6 +17,30 @@ from pgpkms import KmsPgpKey
 
 
 class TestGenericKmsPgpKey(unittest.TestCase):
+    def test_key_id_with_whitespace(self):
+        """Test that leading/trailing whitespace in key_id is trimmed."""
+        key_id = '  arn:aws:kms:us-east-1:123456789012:key/test-key  '
+        with patch('botocore.session.get_session') as mock_get_session:
+            mock_session = Mock()
+            mock_client = Mock()
+            mock_get_session.return_value = mock_session
+            mock_session.create_client.return_value = mock_client
+            mock_client.get_public_key.return_value = {
+                'KeyId': key_id.strip(),
+                'KeySpec': 'RSA_2048',
+                'PublicKey': self.mock_public_key_der
+            }
+            mock_client.describe_key.return_value = {
+                'KeyMetadata': {
+                    'KeyId': key_id.strip(),
+                    'CreationDate': self.mock_creation_date
+                }
+            }
+            mock_client.list_resource_tags.return_value = {'Tags': []}
+            mock_client.sign.return_value = {'Signature': self.mock_signature}
+            # Should not raise, and should work as normal
+            key = KmsPgpKey(key_id)
+            self.assertEqual(key.key_id, key_id.strip())
     """Generic unit tests for KmsPgpKey functionality."""
 
     def setUp(self):

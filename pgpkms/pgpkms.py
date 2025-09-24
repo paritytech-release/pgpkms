@@ -44,6 +44,7 @@ class KmsPgpKey:
   """
 
   def __init__(self, key_id, kms_client = None):
+    key_id = key_id.strip()
     """
     Initialize a new "KmsPgpKey" instance.
 
