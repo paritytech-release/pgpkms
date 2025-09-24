@@ -190,9 +190,7 @@ class KmsPgpKey:
       Whether the returned key should be armoured (text) or not (binary).
 
     kms_client:
-      A BotoCore "KMS" client, if "None" this will be initialized as:
-        | session = botocore.session.get_session()
-        | kms_client = session.create_client('kms')
+      A  "KMS" client, if "None" this will be initialized
 
     Returns:
     --------
