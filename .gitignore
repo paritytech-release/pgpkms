@@ -160,3 +160,6 @@ cython_debug/
 *.pub
 *.asc
 *.sig
+
+.idea
+headers
