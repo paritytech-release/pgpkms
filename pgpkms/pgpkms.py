@@ -604,7 +604,24 @@ def _KmsPgpKey__subpacket(type, value):
 # ==============================================================================
 
 def _KmsPgpKey__mpi(number, bits = 0):
-  bits = max(number.bit_length(), bits)
-  bytes = number.to_bytes(bits // 8 + (bits % 8 and 1 or 0), 'big')
-  length = bits.to_bytes(2, 'big')
-  return length + bytes
+  # RFC 4880 Section 3.2: MPI (Multi-Precision Integer) encoding
+  # An MPI consists of two pieces: a two-octet scalar that is the length of
+  # the MPI in bits followed by the MPI itself. The MPI is stored in big-endian
+  # format with the most significant bit (MSB) MUST be set to 1.
+  #
+  # This fix ensures compliance with stricter OpenPGP validators in newer RPM
+  # versions (Rocky Linux 10, AlmaLinux 10) that reject malformed MPIs.
+
+  # Handle the special case of zero
+  if number == 0:
+    return b'\x00\x00'  # Zero bit length, no data
+
+  # Calculate the actual bit length (position of highest set bit)
+  # This naturally ensures the MSB will be set when we convert to bytes
+  bit_count = number.bit_length()
+
+  # Convert to bytes with no leading zeros, ensuring MSB is always set
+  bytes_data = number.to_bytes((bit_count + 7) // 8, 'big')
+
+  # Return the bit length (2 bytes, big-endian) followed by the MPI bytes
+  return bit_count.to_bytes(2, 'big') + bytes_data
