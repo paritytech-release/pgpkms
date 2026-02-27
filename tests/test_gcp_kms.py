@@ -76,8 +76,8 @@ class TestGCPKmsPgpKey(unittest.TestCase):
 
     def test_gcp_key_initialization_with_labels(self):
         """Test GCP key initialization with pgp-name/pgp-email labels."""
-        key, _ = self.create_gcp_key_with_mocks(name='Jane Doe', email='jane@example.com')
-        
+        key, _ = self.create_gcp_key_with_mocks(name='Jane Doe', email='jane-at-example-dot-com')
+
         self.assertEqual(key.user_id, 'Jane Doe <jane@example.com>')
         self.assertEqual(key.bits, 2048)
         self.assertEqual(key.creation_date, self.mock_creation_timestamp)
@@ -89,7 +89,7 @@ class TestGCPKmsPgpKey(unittest.TestCase):
 
     def test_gcp_key_initialization_email_only(self):
         """Test GCP key initialization with only email."""
-        key, _ = self.create_gcp_key_with_mocks(name=None, email='test@example.com')
+        key, _ = self.create_gcp_key_with_mocks(name=None, email='test-at-example-dot-com')
         self.assertEqual(key.user_id, 'test@example.com')
 
     def test_gcp_key_initialization_no_labels(self):

@@ -103,6 +103,12 @@ class KmsPgpKey:
     name = tags.get('PGPName') or tags.get('pgp-name')
     email = tags.get('PGPEmail') or tags.get('pgp-email')
 
+    # GCP labels only allow lowercase letters, digits, hyphens, and underscores.
+    # Characters like '@' and '.' are not valid in label values, so we encode
+    # them as '-at-' and '-dot-' respectively and decode here.
+    if email and ('pgp-email' in tags):
+      email = email.replace('-at-', '@').replace('-dot-', '.')
+
     if name and email:
       self.user_id = '%s <%s>' % (name, email)
     elif email:
