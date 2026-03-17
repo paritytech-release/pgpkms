@@ -232,12 +232,14 @@ class KmsPgpKey:
     expire_in_seconds = time_delta_seconds + expiration_days * 86400 #convert days to seconds
 
     # Those are all our hashed subpackets. Note the encryption algorithm and
-    # compression algorithms in here... They shouldn't be (as with AWS keys we
-    # we can only either sign _OR_ encrypt). That saidt most other keys I've
+    # compression algorithms in here... They shouldn't be (as with AWS keys
+    # we can only either sign _OR_ encrypt). That said most other keys I've
     # seen include them (and RFC-4880 deprecates "sign-only" keys), so we throw
     # our hands up in the air and party like it's 1998! (yes, this is shit!)
+    signature_creation_time = int(time())
+
     hashed_subpackets =  __subpacket(SUBPACKET_ISSUER_FINGERPRINT, b'\x04' + self.__pgp_fingerprint)
-    hashed_subpackets += __subpacket(SUBPACKET_SIGNATURE_CREATION_TIME, self.creation_date.to_bytes(4, 'big'))
+    hashed_subpackets += __subpacket(SUBPACKET_SIGNATURE_CREATION_TIME, signature_creation_time.to_bytes(4, 'big'))
     hashed_subpackets += __subpacket(SUBPACKET_EXPIRATION, expire_in_seconds.to_bytes(4, 'big'))
     hashed_subpackets += __subpacket(SUBPACKET_KEY_FLAGS, b'\x03') # OR-ed flags: 0x01 => certify, 0x02 => sign
     hashed_subpackets += __subpacket(SUBPACKET_ENCRYPTION_ALGORITHMS, b'\x09\x08\x07') # 0x09 => AES256, 0x08 => AES192, 0x07 => AES128
